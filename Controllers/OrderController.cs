@@ -20,6 +20,7 @@ public class OrderController: Controller
     
     [Authorize]
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<OrderModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOrders()
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
@@ -42,6 +43,7 @@ public class OrderController: Controller
 
     [Authorize]
     [HttpGet("{id}")]
+    [ProducesResponseType(typeof(OrderModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOrderById([FromRoute] int id)
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
@@ -55,7 +57,6 @@ public class OrderController: Controller
                     {
                         ClothType = order.ClothType,
                         ImageUrl = order.ImageUrl,
-                        EditableObject = order.EditableObject,
                         OrderStatus = OrderStatus.Draft,
                         Cost = order.Cost,
                         CreatorId = user.Id,
@@ -105,6 +106,7 @@ public class OrderController: Controller
 
     [Authorize]
     [HttpGet("undraft/{id}")]
+    [ProducesResponseType(typeof(OrderModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> PlaceOrder([FromRoute] int id)
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
@@ -114,9 +116,29 @@ public class OrderController: Controller
             order.OrderStatus = OrderStatus.Placed;
             _dbContext.Orders.Update(order);
             await _dbContext.SaveChangesAsync();
-            return Ok(Json(order));
+            return Ok(Json(order.OrderStatus));
         }
         
         return NotFound();
     }
+
+    [Authorize]
+    [HttpGet("getobject/{id}")]
+    public async Task<IActionResult> GetEditableObject([FromRoute] int id)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
+        if (user != null && order != null)
+        {
+            if (order.OrderStatus == OrderStatus.Draft)
+            {
+                return Ok(Json(order.EditableObject));
+            }
+
+            return BadRequest(new {ErrorText = "Cannot get Editable object for Published order."});
+        }
+        
+        return NotFound();
+    }
+
 }

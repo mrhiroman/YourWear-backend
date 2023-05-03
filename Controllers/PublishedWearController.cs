@@ -20,6 +20,7 @@ public class PublishedWearController : Controller
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable<WearModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllWears()
     {
         var wears = await _dbContext.PublishedWears.Where(x => x.User != null).ToListAsync();
@@ -35,7 +36,8 @@ public class PublishedWearController : Controller
     }
     
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetOrderById([FromRoute] int id)
+    [ProducesResponseType(typeof(WearModel), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetWearById([FromRoute] int id)
     {
         var wear = await _dbContext.PublishedWears.FirstOrDefaultAsync(x => x.Id == id);
         if (wear != null)
@@ -56,7 +58,7 @@ public class PublishedWearController : Controller
 
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> PlaceOrder([FromBody] AddWearModel model)
+    public async Task<IActionResult> AddWear([FromBody] AddWearModel model)
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
         if (user != null)
@@ -66,6 +68,7 @@ public class PublishedWearController : Controller
                 User = user,
                 ClothType = model.ClothType,
                 ImageUrl = model.ImageUrl,
+                EditableObject = model.EditableObject,
                 Name = model.Name
             });
             await _dbContext.SaveChangesAsync();
@@ -75,5 +78,18 @@ public class PublishedWearController : Controller
         return BadRequest();
     }
     
+    [Authorize]
+    [HttpGet("getobject/{id}")]
+    public async Task<IActionResult> GetEditableObject([FromRoute] int id)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var wear = await _dbContext.PublishedWears.FirstOrDefaultAsync(x => x.Id == id);
+        if (user != null && wear != null)
+        {
+                return Ok(Json(wear.EditableObject));
+        }
+        
+        return NotFound();
+    }
     
 }
