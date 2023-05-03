@@ -48,15 +48,33 @@ public class OrderController: Controller
         var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
         if (user != null && order != null)
         {
-            return Json(new OrderModel
+            switch (order.OrderStatus)
             {
-                ClothType = order.ClothType,
-                ImageUrl = order.ImageUrl,
-                Cost = order.Cost,
-                CreatorId = user.Id,
-                CreatorName = user.Name,
-                Id = order.Id
-            });
+                case OrderStatus.Draft:
+                    return Json(new OrderModel
+                    {
+                        ClothType = order.ClothType,
+                        ImageUrl = order.ImageUrl,
+                        EditableObject = order.EditableObject,
+                        OrderStatus = OrderStatus.Draft,
+                        Cost = order.Cost,
+                        CreatorId = user.Id,
+                        CreatorName = user.Name,
+                        Id = order.Id
+                    });
+                case OrderStatus.Placed:
+                    return Json(new OrderModel
+                    {
+                        ClothType = order.ClothType,
+                        ImageUrl = order.ImageUrl,
+                        OrderStatus = OrderStatus.Placed,
+                        Cost = order.Cost,
+                        CreatorId = user.Id,
+                        CreatorName = user.Name,
+                        Id = order.Id
+                    });
+            }
+            
         }
 
         return NotFound();
@@ -64,7 +82,7 @@ public class OrderController: Controller
 
     [Authorize]
     [HttpPost]
-    public async Task<IActionResult> PlaceOrder([FromBody] AddOrderModel model)
+    public async Task<IActionResult> SaveOrder([FromBody] AddOrderModel model)
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
         if (user != null)
@@ -75,11 +93,30 @@ public class OrderController: Controller
                 Cost = model.Cost,
                 ClothType = model.ClothType,
                 ImageUrl = model.ImageUrl,
+                EditableObject = model.EditableObject,
+                OrderStatus = OrderStatus.Draft
             });
             await _dbContext.SaveChangesAsync();
             return Ok(Json(model));
         }
 
         return BadRequest();
+    }
+
+    [Authorize]
+    [HttpGet("undraft/{id}")]
+    public async Task<IActionResult> PlaceOrder([FromRoute] int id)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
+        if (user != null && order != null)
+        {
+            order.OrderStatus = OrderStatus.Placed;
+            _dbContext.Orders.Update(order);
+            await _dbContext.SaveChangesAsync();
+            return Ok(Json(order));
+        }
+        
+        return NotFound();
     }
 }

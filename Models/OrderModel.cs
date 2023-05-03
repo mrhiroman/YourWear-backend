@@ -4,6 +4,8 @@ public class OrderModel
 {
     public int Id { get; set; }
     public string ImageUrl { get; set; }
+    public string EditableObject { get; set; }
+    public OrderStatus OrderStatus { get; set; }
     public int Cost { get; set; }
     public ClothType ClothType { get; set; }
     public int CreatorId { get; set; }
