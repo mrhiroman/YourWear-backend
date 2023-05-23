@@ -149,6 +149,7 @@ public class UserController: Controller
 
     [Authorize]
     [HttpGet("/info")]
+    [ProducesResponseType(typeof(UserInfoModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserInfo()
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
