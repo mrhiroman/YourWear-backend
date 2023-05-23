@@ -146,5 +146,31 @@ public class UserController: Controller
         
         return BadRequest("Failed to Identify a User.");
     }
+
+    [Authorize]
+    [HttpGet("/info")]
+    public async Task<IActionResult> GetUserInfo()
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        if (user != null)
+        {
+            return Json(new UserInfoModel
+            {
+                Name = user.Name,
+                Email = user.Email,
+                PublishedWears = user.PublishedWears.Select(pw => new WearModel
+                {
+                    Name = pw.Name,
+                    ClothType = pw.ClothType,
+                    ImageUrl = pw.ImageUrl,
+                    Id = pw.Id,
+                    CreatorName = user.Name,
+                    CreatorId = user.Id
+                }).ToList()
+            });
+        }
+        
+        return BadRequest("Failed to Identify a User.");
+    }
     
 }
