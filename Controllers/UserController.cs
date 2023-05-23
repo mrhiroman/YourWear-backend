@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -31,8 +32,8 @@ public class UserController: Controller
         { 
             return BadRequest(new { errorText = "Invalid username or password." }); 
         }
-        
         var now = DateTime.UtcNow;
+        
         var jwt = new JwtSecurityToken(
             issuer: AuthOptions.ISSUER, 
             audience: AuthOptions.AUDIENCE, 
@@ -40,12 +41,15 @@ public class UserController: Controller
             claims: identity.Claims, 
             expires: now.Add(TimeSpan.FromMinutes(AuthOptions.LIFETIME)), 
             signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
-        
+
         var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
- 
+
+        var refreshToken = await GetRefreshToken(await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == model.Email));
+        
         var response = new 
         {
-            access_token = encodedJwt, 
+            access_token = encodedJwt,
+            refresh_token = refreshToken.TokenValue,
             username = identity.Name
         };
  
@@ -58,21 +62,41 @@ public class UserController: Controller
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == email && x.Password == hashedPassword); 
         if (user != null)
         {
-            var claims = new List<Claim> 
+            var tokenClaims = new List<Claim> 
             {
                 new Claim(ClaimTypes.Email, user.Email), 
                 new Claim(ClaimTypes.Name, user.Name),
                 new Claim(ClaimTypes.Role, user.Role)
-            }; 
-            ClaimsIdentity claimsIdentity = 
-                new ClaimsIdentity(claims, "Token", ClaimTypes.Name, 
+            };
+
+            ClaimsIdentity tokenClaimsIdentity =
+                new ClaimsIdentity(tokenClaims, "Token", ClaimTypes.Name,
                     ClaimTypes.Role);
-            return claimsIdentity;
+
+            return tokenClaimsIdentity;
         }
 
         return null;
     }
-    
+
+    private async Task<RefreshToken> GetRefreshToken(User user)
+    {
+        if (user != null)
+        {
+            var token = new RefreshToken
+            {
+                User = user,
+                Created = DateTime.Now,
+                Expires = DateTime.Now.AddDays(7),
+                TokenValue = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
+            };
+            _dbContext.RefreshTokens.Add(token);
+            await _dbContext.SaveChangesAsync();
+            return token;
+        }
+
+        return null;
+    }
     private async Task<ClaimsIdentity> GetIdentity(User user)
     {
         if (user != null)
@@ -116,12 +140,16 @@ public class UserController: Controller
                 model.Name != String.Empty && model.Name.Length > 7 &&
                 model.Password != string.Empty && model.Password.Length >= 8);
     }
-
-    [Authorize]
-    [HttpGet("/api/refresh")]
-    public async Task<IActionResult> RefreshToken()
+    
+    [HttpPost("/api/refresh")]
+    public async Task<IActionResult> RefreshToken([FromBody] string token)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var refreshToken = await _dbContext.RefreshTokens.FirstOrDefaultAsync(t => t.TokenValue == token);
+        if (refreshToken == null || refreshToken.Expires < DateTime.Now)
+        {
+            return BadRequest("Token is not valid.");
+        }
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == refreshToken.User.Email);
         if (user != null)
         {
             var identity = await GetIdentity(user);
@@ -135,20 +163,27 @@ public class UserController: Controller
                 signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
         
             var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
- 
+
+            refreshToken.Expires = DateTime.Now.Subtract(TimeSpan.FromMinutes(10));
+            _dbContext.RefreshTokens.Update(refreshToken);
+            await _dbContext.SaveChangesAsync();
+
+            refreshToken = await GetRefreshToken(user);
+
             var response = new 
             {
                 access_token = encodedJwt, 
-                username = identity.Name
+                refreshToken = refreshToken.TokenValue,
+                username = user.Name
             };
             return Json(response);
         }
         
-        return BadRequest("Failed to Identify a User.");
+        return BadRequest("User associated with this token not found.");
     }
 
     [Authorize]
-    [HttpGet("/info")]
+    [HttpGet("/api/info")]
     [ProducesResponseType(typeof(UserInfoModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserInfo()
     {

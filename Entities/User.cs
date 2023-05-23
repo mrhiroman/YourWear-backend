@@ -9,4 +9,5 @@ public class User
     public string Role { get; set; }
     public virtual List<Order> Orders { get; set; }
     public virtual List<PublishedWear> PublishedWears { get; set; }
+    public virtual List<RefreshToken> RefreshTokens { get; set; }
 }
