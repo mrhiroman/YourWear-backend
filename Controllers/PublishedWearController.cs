@@ -21,10 +21,18 @@ public class PublishedWearController : Controller
 
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<WearModel>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAllWears()
+    public async Task<IActionResult> GetAllWears(
+        [FromQuery(Name = "page")] int page = -1,
+        [FromQuery(Name = "limit")] int limit = -1)
     {
         var wears = await _dbContext.PublishedWears.Where(x => x.User != null).ToListAsync();
-        return Json(wears.Select(x => new WearModel
+        Response.Headers.Add("X-Total-Count", wears.Count.ToString());
+            
+        var mappedData = page == -1 ?
+            wears : limit > 0 ? 
+                wears.Skip((page - 1) * limit).Take(limit) : Array.Empty<PublishedWear>();
+        
+        return Json(mappedData.Select(x => new WearModel
         {
             ClothType = x.ClothType,
             Name = x.Name,
@@ -60,7 +68,7 @@ public class PublishedWearController : Controller
     [HttpPost]
     public async Task<IActionResult> AddWear([FromBody] AddWearModel model)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         if (user != null)
         {
             await _dbContext.PublishedWears.AddAsync(new PublishedWear
@@ -82,7 +90,7 @@ public class PublishedWearController : Controller
     [HttpGet("getobject/{id}")]
     public async Task<IActionResult> GetEditableObject([FromRoute] int id)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         var wear = await _dbContext.PublishedWears.FirstOrDefaultAsync(x => x.Id == id);
         if (user != null && wear != null)
         {

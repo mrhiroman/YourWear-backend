@@ -1,5 +1,7 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -58,6 +60,25 @@ public class UserController: Controller
         {
             var claims = new List<Claim> 
             {
+                new Claim(ClaimTypes.Email, user.Email), 
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.Role)
+            }; 
+            ClaimsIdentity claimsIdentity = 
+                new ClaimsIdentity(claims, "Token", ClaimTypes.Name, 
+                    ClaimTypes.Role);
+            return claimsIdentity;
+        }
+
+        return null;
+    }
+    
+    private async Task<ClaimsIdentity> GetIdentity(User user)
+    {
+        if (user != null)
+        {
+            var claims = new List<Claim> 
+            {
                 new Claim(ClaimsIdentity.DefaultNameClaimType, user.Email), 
                 new Claim(ClaimsIdentity.DefaultRoleClaimType, user.Role)
             }; 
@@ -95,4 +116,35 @@ public class UserController: Controller
                 model.Name != String.Empty && model.Name.Length > 7 &&
                 model.Password != string.Empty && model.Password.Length >= 8);
     }
+
+    [Authorize]
+    [HttpGet("/api/refresh")]
+    public async Task<IActionResult> RefreshToken()
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        if (user != null)
+        {
+            var identity = await GetIdentity(user);
+            var now = DateTime.UtcNow;
+            var jwt = new JwtSecurityToken(
+                issuer: AuthOptions.ISSUER, 
+                audience: AuthOptions.AUDIENCE, 
+                notBefore: now, 
+                claims: identity.Claims, 
+                expires: now.Add(TimeSpan.FromMinutes(AuthOptions.LIFETIME)), 
+                signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
+        
+            var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
+ 
+            var response = new 
+            {
+                access_token = encodedJwt, 
+                username = identity.Name
+            };
+            return Json(response);
+        }
+        
+        return BadRequest("Failed to Identify a User.");
+    }
+    
 }

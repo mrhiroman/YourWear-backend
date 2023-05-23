@@ -21,13 +21,23 @@ public class OrderController: Controller
     [Authorize]
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<OrderModel>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetOrders()
+    public async Task<IActionResult> GetOrders(
+        [FromQuery(Name = "page")] int page = -1,
+        [FromQuery(Name = "limit")] int limit = -1)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
+        
         if (user != null)
         {
             var orders = await _dbContext.Orders.Where(x => x.User.Id == user.Id).ToListAsync();
-            return Json(orders.Select(x => new OrderModel
+            
+            Response.Headers.Add("X-Total-Count", orders.Count.ToString());
+            
+            var mappedData = page == -1 ?
+                orders : limit > 0 ? 
+                    orders.Skip((page - 1) * limit).Take(limit) : Array.Empty<Order>();
+            
+            return Json(mappedData.Select(x => new OrderModel
             {
                 ClothType = x.ClothType,
                 ImageUrl = x.ImageUrl,
@@ -46,7 +56,7 @@ public class OrderController: Controller
     [ProducesResponseType(typeof(OrderModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOrderById([FromRoute] int id)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
         if (user != null && order != null)
         {
@@ -85,7 +95,7 @@ public class OrderController: Controller
     [HttpPost]
     public async Task<IActionResult> SaveOrder([FromBody] AddOrderModel model)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         if (user != null)
         {
             await _dbContext.Orders.AddAsync(new Order
@@ -109,7 +119,7 @@ public class OrderController: Controller
     [ProducesResponseType(typeof(OrderModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> PlaceOrder([FromRoute] int id)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
         if (user != null && order != null)
         {
@@ -126,7 +136,7 @@ public class OrderController: Controller
     [HttpGet("getobject/{id}")]
     public async Task<IActionResult> GetEditableObject([FromRoute] int id)
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == id);
         if (user != null && order != null)
         {
