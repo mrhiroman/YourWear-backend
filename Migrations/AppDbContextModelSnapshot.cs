@@ -25,6 +25,23 @@ namespace YourWear_backend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("YourWear_backend.Entities.EditableObject", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ObjectValue")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EditableObjects");
+                });
+
             modelBuilder.Entity("YourWear_backend.Entities.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -39,9 +56,8 @@ namespace YourWear_backend.Migrations
                     b.Property<int>("Cost")
                         .HasColumnType("int");
 
-                    b.Property<string>("EditableObject")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("EditableObjectId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
@@ -54,6 +70,8 @@ namespace YourWear_backend.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EditableObjectId");
 
                     b.HasIndex("UserId");
 
@@ -71,9 +89,8 @@ namespace YourWear_backend.Migrations
                     b.Property<int>("ClothType")
                         .HasColumnType("int");
 
-                    b.Property<string>("EditableObject")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("EditableObjectId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ImageUrl")
                         .IsRequired()
@@ -87,6 +104,8 @@ namespace YourWear_backend.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EditableObjectId");
 
                     b.HasIndex("UserId");
 
@@ -152,22 +171,38 @@ namespace YourWear_backend.Migrations
 
             modelBuilder.Entity("YourWear_backend.Entities.Order", b =>
                 {
+                    b.HasOne("YourWear_backend.Entities.EditableObject", "EditableObject")
+                        .WithMany()
+                        .HasForeignKey("EditableObjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("YourWear_backend.Entities.User", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("EditableObject");
+
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("YourWear_backend.Entities.PublishedWear", b =>
                 {
+                    b.HasOne("YourWear_backend.Entities.EditableObject", "EditableObject")
+                        .WithMany()
+                        .HasForeignKey("EditableObjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("YourWear_backend.Entities.User", "User")
                         .WithMany("PublishedWears")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("EditableObject");
 
                     b.Navigation("User");
                 });

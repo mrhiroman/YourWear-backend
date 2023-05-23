@@ -71,14 +71,18 @@ public class PublishedWearController : Controller
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         if (user != null)
         {
-            await _dbContext.PublishedWears.AddAsync(new PublishedWear
+            var wear = new PublishedWear
             {
                 User = user,
                 ClothType = model.ClothType,
                 ImageUrl = model.ImageUrl,
-                EditableObject = model.EditableObject,
-                Name = model.Name
-            });
+                Name = model.Name,
+                EditableObject = new EditableObject
+                {
+                    ObjectValue = model.EditableObject
+                }
+            };
+            await _dbContext.PublishedWears.AddAsync(wear);
             await _dbContext.SaveChangesAsync();
             return Ok(Json(model));
         }

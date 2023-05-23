@@ -12,6 +12,7 @@ public class PublishedWear
     
     public string Name { get; set; }
     public string ImageUrl { get; set; }
-    public string EditableObject { get; set; }
+    [ForeignKey("EditableObjectId")]
+    public virtual EditableObject EditableObject { get; set; }
     public ClothType ClothType { get; set; }
 }

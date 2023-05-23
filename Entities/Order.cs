@@ -9,9 +9,9 @@ public class Order
     
     [ForeignKey("UserId")]
     public virtual User User { get; set; }
-    
     public string ImageUrl { get; set; }
-    public string EditableObject { get; set; }
+    [ForeignKey("EditableObjectId")]
+    public virtual EditableObject EditableObject { get; set; }
     public OrderStatus OrderStatus { get; set; }
     public int Cost { get; set; }
     public ClothType ClothType { get; set; }

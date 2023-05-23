@@ -98,15 +98,19 @@ public class OrderController: Controller
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         if (user != null)
         {
-            await _dbContext.Orders.AddAsync(new Order
+            var order = new Order
             {
                 User = user,
                 Cost = model.Cost,
                 ClothType = model.ClothType,
                 ImageUrl = model.ImageUrl,
-                EditableObject = model.EditableObject,
-                OrderStatus = OrderStatus.Draft
-            });
+                OrderStatus = OrderStatus.Draft,
+                EditableObject = new EditableObject
+                {
+                    ObjectValue = model.EditableObject
+                }
+            };
+            await _dbContext.Orders.AddAsync(order);
             await _dbContext.SaveChangesAsync();
             return Ok(Json(model));
         }

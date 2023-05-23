@@ -129,6 +129,10 @@ public class UserController: Controller
                 Role = "user"
             });
         }
+        else
+        {
+            return BadRequest("Data cannot be validated.");
+        }
 
         await _dbContext.SaveChangesAsync();
         return Json(new { model.Name, model.Password });
