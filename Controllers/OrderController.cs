@@ -146,7 +146,7 @@ public class OrderController: Controller
         {
             if (order.OrderStatus == OrderStatus.Draft)
             {
-                return Ok(Json(order.EditableObject));
+                return Ok(Json(order.EditableObject.ObjectValue));
             }
 
             return BadRequest(new {ErrorText = "Cannot get Editable object for Published order."});

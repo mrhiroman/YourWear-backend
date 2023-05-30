@@ -98,7 +98,7 @@ public class PublishedWearController : Controller
         var wear = await _dbContext.PublishedWears.FirstOrDefaultAsync(x => x.Id == id);
         if (user != null && wear != null)
         {
-                return Ok(Json(wear.EditableObject));
+                return Ok(Json(wear.EditableObject.ObjectValue));
         }
         
         return NotFound();

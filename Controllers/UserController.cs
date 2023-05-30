@@ -17,18 +17,21 @@ public class UserController: Controller
 {
     private readonly AppDbContext _dbContext;
     private readonly PasswordHashingService _passwordHashingService;
+    private readonly HttpClient _httpClient;
 
-    public UserController(AppDbContext dbContext, PasswordHashingService passwordHashingService)
+    public UserController(AppDbContext dbContext, PasswordHashingService passwordHashingService, HttpClient httpClient)
     {
         _dbContext = dbContext;
         _passwordHashingService = passwordHashingService;
+        _httpClient = httpClient;
     }
  
     [HttpPost]
+    [ProducesResponseType(typeof(AuthRequestResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Token([FromBody] LoginUserModel model)
     {
         var identity = await GetIdentity(model.Email, model.Password); 
-        if (identity == null) 
+        if (identity == null || model.Password == "") 
         { 
             return BadRequest(new { errorText = "Invalid username or password." }); 
         }
@@ -46,11 +49,11 @@ public class UserController: Controller
 
         var refreshToken = await GetRefreshToken(await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == model.Email));
         
-        var response = new 
+        var response = new AuthRequestResponse
         {
-            access_token = encodedJwt,
-            refresh_token = refreshToken.TokenValue,
-            username = identity.Name
+            AccessToken = encodedJwt,
+            RefreshToken = refreshToken.TokenValue,
+            Username = identity.Name
         };
  
         return Json(response);
@@ -126,7 +129,8 @@ public class UserController: Controller
                 Email = model.Email,
                 Name = model.Name,
                 Password = hashedPassword,
-                Role = "user"
+                Role = "user",
+                IsGoogle = false
             });
         }
         else
@@ -146,6 +150,7 @@ public class UserController: Controller
     }
     
     [HttpPost("/api/refresh")]
+    [ProducesResponseType(typeof(AuthRequestResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> RefreshToken([FromBody] string token)
     {
         var refreshToken = await _dbContext.RefreshTokens.FirstOrDefaultAsync(t => t.TokenValue == token);
@@ -174,11 +179,11 @@ public class UserController: Controller
 
             refreshToken = await GetRefreshToken(user);
 
-            var response = new 
+            var response = new AuthRequestResponse
             {
-                access_token = encodedJwt, 
-                refreshToken = refreshToken.TokenValue,
-                username = user.Name
+                AccessToken = encodedJwt, 
+                RefreshToken = refreshToken.TokenValue,
+                Username = user.Name
             };
             return Json(response);
         }
@@ -212,5 +217,76 @@ public class UserController: Controller
         
         return BadRequest("Failed to Identify a User.");
     }
-    
+
+    [HttpPost("/api/google_login")]
+    [ProducesResponseType(typeof(AuthRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GoogleLogin([FromBody] string token)
+    {
+        var googleUser = await GetCredentialsFromGoogle(token);
+        if (googleUser != null)
+        {
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == googleUser.Email && u.IsGoogle == true);
+            if (user == null)
+            {
+                await _dbContext.Users.AddAsync(new User
+                {
+                    Email = googleUser.Email,
+                    Name = googleUser.Username,
+                    Password = _passwordHashingService.GetSHA256(googleUser.Username),
+                    Role = "user",
+                    IsGoogle = true,
+                });
+                await _dbContext.SaveChangesAsync();
+                user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == googleUser.Email && u.IsGoogle == true);
+            }
+            var identity = await GetIdentity(user);
+            var now = DateTime.UtcNow;
+            var jwt = new JwtSecurityToken(
+                issuer: AuthOptions.ISSUER, 
+                audience: AuthOptions.AUDIENCE, 
+                notBefore: now, 
+                claims: identity.Claims, 
+                expires: now.Add(TimeSpan.FromMinutes(AuthOptions.LIFETIME)), 
+                signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
+        
+            var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
+            await _dbContext.SaveChangesAsync();
+
+            var refreshToken = await GetRefreshToken(user);
+
+            var response = new AuthRequestResponse 
+            {
+                AccessToken = encodedJwt, 
+                RefreshToken = refreshToken.TokenValue,
+                Username = user.Name
+            };
+            return Json(response);
+            
+        }
+
+        return BadRequest("Invalid google token");
+    }
+
+    private async Task<Credentials> GetCredentialsFromGoogle(string token)
+    {
+        var url = $"https://www.googleapis.com/oauth2/v1/userinfo?alt=json";
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Add("Authorization", "Bearer " + token);
+        var uploadResponse = await _httpClient.SendAsync(request);
+
+        if (uploadResponse.IsSuccessStatusCode)
+        {
+            var respData = await uploadResponse.Content.ReadAsStringAsync();
+            var json = System.Text.Json.JsonDocument.Parse(respData);
+            var email = json.RootElement.GetProperty("email").ToString();
+            var name = json.RootElement.GetProperty("name").ToString();
+            await _dbContext.SaveChangesAsync();
+            return new Credentials(name, email);
+        }
+
+        return null;
+    }
+
+    record Credentials(string Username, string Email);
+
 }
