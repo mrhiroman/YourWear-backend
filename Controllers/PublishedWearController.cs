@@ -69,17 +69,18 @@ public class PublishedWearController : Controller
     public async Task<IActionResult> AddWear([FromBody] AddWearModel model)
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
-        if (user != null)
+        var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == model.OrderId);
+        if (user != null && order != null)
         {
             var wear = new PublishedWear
             {
                 User = user,
-                ClothType = model.ClothType,
-                ImageUrl = model.ImageUrl,
+                ClothType = order.ClothType,
+                ImageUrl = order.ImageUrl,
                 Name = model.Name,
                 EditableObject = new EditableObject
                 {
-                    ObjectValue = model.EditableObject
+                    ObjectValue = order.EditableObject.ObjectValue
                 }
             };
             await _dbContext.PublishedWears.AddAsync(wear);
@@ -102,6 +103,20 @@ public class PublishedWearController : Controller
         }
         
         return NotFound();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetFeaturedWears()
+    {
+        var featuredWears = await _dbContext.PublishedWears.Where(w => w.User.Id == 1).ToListAsync();
+        Response.Headers.Add("X-Total-Count", featuredWears.Count.ToString());
+        return Json(featuredWears.Select(x => new WearModel
+        {
+            ClothType = x.ClothType,
+            Name = x.Name,
+            ImageUrl = x.ImageUrl,
+            Id = x.Id
+        }));
     }
     
 }

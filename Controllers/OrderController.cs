@@ -44,7 +44,8 @@ public class OrderController: Controller
                 Cost = x.Cost,
                 CreatorId = x.User.Id,
                 CreatorName = x.User.Name,
-                Id = x.Id
+                Id = x.Id,
+                OrderStatus = x.OrderStatus
             }));
         }
 
@@ -85,7 +86,6 @@ public class OrderController: Controller
                         Id = order.Id
                     });
             }
-            
         }
 
         return NotFound();
@@ -111,6 +111,26 @@ public class OrderController: Controller
                 }
             };
             await _dbContext.Orders.AddAsync(order);
+            await _dbContext.SaveChangesAsync();
+            return Ok(Json(model));
+        }
+
+        return BadRequest();
+    }
+    
+    [Authorize]
+    [HttpPost]
+    [Route("update")]
+    public async Task<IActionResult> SaveOrder([FromBody] UpdateOrderModel model)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
+        var order = await _dbContext.Orders.FirstOrDefaultAsync(x => x.Id == model.Id);
+        if (user != null && order != null)
+        {
+            order.ImageUrl = model.ImageUrl;
+            order.Cost = model.Cost;
+            order.EditableObject = new EditableObject {ObjectValue = model.EditableObject};
+            _dbContext.Orders.Update(order);
             await _dbContext.SaveChangesAsync();
             return Ok(Json(model));
         }

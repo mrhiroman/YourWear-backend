@@ -104,14 +104,15 @@ public class UserController: Controller
     {
         if (user != null)
         {
-            var claims = new List<Claim> 
+            var tokenClaims = new List<Claim> 
             {
-                new Claim(ClaimsIdentity.DefaultNameClaimType, user.Email), 
-                new Claim(ClaimsIdentity.DefaultRoleClaimType, user.Role)
-            }; 
+                new Claim(ClaimTypes.Email, user.Email), 
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
             ClaimsIdentity claimsIdentity = 
-                new ClaimsIdentity(claims, "Token", ClaimsIdentity.DefaultNameClaimType, 
-                    ClaimsIdentity.DefaultRoleClaimType);
+                new ClaimsIdentity(tokenClaims, "Token", ClaimTypes.Name, 
+                    ClaimTypes.Role);
             return claimsIdentity;
         }
 
@@ -196,7 +197,7 @@ public class UserController: Controller
     [ProducesResponseType(typeof(UserInfoModel), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserInfo()
     {
-        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Email == User.Identity.Name);
+        var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         if (user != null)
         {
             return Json(new UserInfoModel
