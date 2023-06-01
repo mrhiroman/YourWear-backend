@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.Filters;
 using YourWear_backend;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,7 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "Online Cloth Customizer",
     });
+    c.OperationFilter<AddResponseHeadersFilter>();
     
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

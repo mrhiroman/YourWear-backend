@@ -5,14 +5,14 @@
 namespace YourWear_backend.Migrations
 {
     /// <inheritdoc />
-    public partial class AddGoogleOAuth : Migration
+    public partial class AddAdminWears : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<bool>(
-                name: "IsGoogle",
-                table: "Users",
+                name: "IsAdmin",
+                table: "PublishedWears",
                 type: "bit",
                 nullable: false,
                 defaultValue: false);
@@ -22,8 +22,8 @@ namespace YourWear_backend.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "IsGoogle",
-                table: "Users");
+                name: "IsAdmin",
+                table: "PublishedWears");
         }
     }
 }

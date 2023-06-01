@@ -12,6 +12,19 @@ namespace YourWear_backend.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "Categories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Categories", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EditableObjects",
                 columns: table => new
                 {
@@ -33,7 +46,8 @@ namespace YourWear_backend.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Password = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsGoogle = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -51,11 +65,17 @@ namespace YourWear_backend.Migrations
                     EditableObjectId = table.Column<int>(type: "int", nullable: false),
                     OrderStatus = table.Column<int>(type: "int", nullable: false),
                     Cost = table.Column<int>(type: "int", nullable: false),
-                    ClothType = table.Column<int>(type: "int", nullable: false)
+                    CategoryId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Orders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Orders_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Orders_EditableObjects_EditableObjectId",
                         column: x => x.EditableObjectId,
@@ -80,11 +100,17 @@ namespace YourWear_backend.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     EditableObjectId = table.Column<int>(type: "int", nullable: false),
-                    ClothType = table.Column<int>(type: "int", nullable: false)
+                    CategoryId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_PublishedWears", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PublishedWears_Categories_CategoryId",
+                        column: x => x.CategoryId,
+                        principalTable: "Categories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_PublishedWears_EditableObjects_EditableObjectId",
                         column: x => x.EditableObjectId,
@@ -122,6 +148,17 @@ namespace YourWear_backend.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Categories_Name",
+                table: "Categories",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Orders_CategoryId",
+                table: "Orders",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Orders_EditableObjectId",
                 table: "Orders",
                 column: "EditableObjectId");
@@ -130,6 +167,11 @@ namespace YourWear_backend.Migrations
                 name: "IX_Orders_UserId",
                 table: "Orders",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PublishedWears_CategoryId",
+                table: "PublishedWears",
+                column: "CategoryId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PublishedWears_EditableObjectId",
@@ -158,6 +200,9 @@ namespace YourWear_backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
+
+            migrationBuilder.DropTable(
+                name: "Categories");
 
             migrationBuilder.DropTable(
                 name: "EditableObjects");

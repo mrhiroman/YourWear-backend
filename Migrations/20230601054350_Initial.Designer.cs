@@ -12,7 +12,7 @@ using YourWear_backend;
 namespace YourWear_backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20230523202609_Initial")]
+    [Migration("20230601054350_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -27,6 +27,26 @@ namespace YourWear_backend.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("YourWear_backend.Entities.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Categories");
+                });
 
             modelBuilder.Entity("YourWear_backend.Entities.EditableObject", b =>
                 {
@@ -53,7 +73,7 @@ namespace YourWear_backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ClothType")
+                    b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
                     b.Property<int>("Cost")
@@ -74,6 +94,8 @@ namespace YourWear_backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CategoryId");
+
                     b.HasIndex("EditableObjectId");
 
                     b.HasIndex("UserId");
@@ -89,7 +111,7 @@ namespace YourWear_backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ClothType")
+                    b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
                     b.Property<int>("EditableObjectId")
@@ -107,6 +129,8 @@ namespace YourWear_backend.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("EditableObjectId");
 
@@ -155,6 +179,9 @@ namespace YourWear_backend.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsGoogle")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -174,6 +201,12 @@ namespace YourWear_backend.Migrations
 
             modelBuilder.Entity("YourWear_backend.Entities.Order", b =>
                 {
+                    b.HasOne("YourWear_backend.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("YourWear_backend.Entities.EditableObject", "EditableObject")
                         .WithMany()
                         .HasForeignKey("EditableObjectId")
@@ -186,6 +219,8 @@ namespace YourWear_backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Category");
+
                     b.Navigation("EditableObject");
 
                     b.Navigation("User");
@@ -193,6 +228,12 @@ namespace YourWear_backend.Migrations
 
             modelBuilder.Entity("YourWear_backend.Entities.PublishedWear", b =>
                 {
+                    b.HasOne("YourWear_backend.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("YourWear_backend.Entities.EditableObject", "EditableObject")
                         .WithMany()
                         .HasForeignKey("EditableObjectId")
@@ -204,6 +245,8 @@ namespace YourWear_backend.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Category");
 
                     b.Navigation("EditableObject");
 

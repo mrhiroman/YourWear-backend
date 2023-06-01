@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Swashbuckle.AspNetCore.Filters;
 using YourWear_backend.Entities;
 using YourWear_backend.Models;
 
@@ -21,25 +22,30 @@ public class OrderController: Controller
     [Authorize]
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<OrderModel>), StatusCodes.Status200OK)]
+    [SwaggerResponseHeader(200,"X-Total-Count", "integer", "Total object count. Use it for pagination!", "int32")]
     public async Task<IActionResult> GetOrders(
         [FromQuery(Name = "page")] int page = -1,
-        [FromQuery(Name = "limit")] int limit = -1)
+        [FromQuery(Name = "limit")] int limit = -1,
+        [FromQuery(Name = "category")] string category = "")
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
+        var dbCategory = await _dbContext.Categories.FirstOrDefaultAsync(x => x.Name == category);
         
         if (user != null)
         {
-            var orders = await _dbContext.Orders.Where(x => x.User.Id == user.Id).ToListAsync();
+            var orders = await (dbCategory != null
+                ?_dbContext.Orders.Where(x => x.User.Id == user.Id && x.Category == dbCategory).ToListAsync() 
+                : _dbContext.Orders.Where(x => x.User.Id == user.Id).ToListAsync());
             
             Response.Headers.Add("X-Total-Count", orders.Count.ToString());
             
             var mappedData = page == -1 ?
                 orders : limit > 0 ? 
                     orders.Skip((page - 1) * limit).Take(limit) : Array.Empty<Order>();
-            
+
             return Json(mappedData.Select(x => new OrderModel
             {
-                ClothType = x.ClothType,
+                Category = new CategoryModel {Name = x.Category.Name},
                 ImageUrl = x.ImageUrl,
                 Cost = x.Cost,
                 CreatorId = x.User.Id,
@@ -66,7 +72,7 @@ public class OrderController: Controller
                 case OrderStatus.Draft:
                     return Json(new OrderModel
                     {
-                        ClothType = order.ClothType,
+                        Category = new CategoryModel {Name = order.Category.Name},
                         ImageUrl = order.ImageUrl,
                         OrderStatus = OrderStatus.Draft,
                         Cost = order.Cost,
@@ -77,7 +83,7 @@ public class OrderController: Controller
                 case OrderStatus.Placed:
                     return Json(new OrderModel
                     {
-                        ClothType = order.ClothType,
+                        Category = new CategoryModel {Name = order.Category.Name},
                         ImageUrl = order.ImageUrl,
                         OrderStatus = OrderStatus.Placed,
                         Cost = order.Cost,
@@ -96,13 +102,14 @@ public class OrderController: Controller
     public async Task<IActionResult> SaveOrder([FromBody] AddOrderModel model)
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
-        if (user != null)
+        var category = await _dbContext.Categories.FirstOrDefaultAsync(x => x.Name == model.Category);
+        if (user != null && category != null)
         {
             var order = new Order
             {
                 User = user,
                 Cost = model.Cost,
-                ClothType = model.ClothType,
+                Category = category,
                 ImageUrl = model.ImageUrl,
                 OrderStatus = OrderStatus.Draft,
                 EditableObject = new EditableObject

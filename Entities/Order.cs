@@ -14,5 +14,6 @@ public class Order
     public virtual EditableObject EditableObject { get; set; }
     public OrderStatus OrderStatus { get; set; }
     public int Cost { get; set; }
-    public ClothType ClothType { get; set; }
+    [ForeignKey("CategoryId")]
+    public virtual Category Category { get; set; }
 }

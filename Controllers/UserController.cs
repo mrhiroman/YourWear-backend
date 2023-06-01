@@ -207,7 +207,7 @@ public class UserController: Controller
                 PublishedWears = user.PublishedWears.Select(pw => new WearModel
                 {
                     Name = pw.Name,
-                    ClothType = pw.ClothType,
+                    Category = new CategoryModel {Name = pw.Category.Name},
                     ImageUrl = pw.ImageUrl,
                     Id = pw.Id,
                     CreatorName = user.Name,

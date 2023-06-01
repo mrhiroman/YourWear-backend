@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Swashbuckle.AspNetCore.Filters;
 using YourWear_backend.Entities;
 using YourWear_backend.Models;
 
@@ -21,11 +22,17 @@ public class PublishedWearController : Controller
 
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<WearModel>), StatusCodes.Status200OK)]
+    [SwaggerResponseHeader(200,"X-Total-Count", "integer", "Total object count. Use it for pagination!", "int32")]
     public async Task<IActionResult> GetAllWears(
         [FromQuery(Name = "page")] int page = -1,
-        [FromQuery(Name = "limit")] int limit = -1)
+        [FromQuery(Name = "limit")] int limit = -1,
+        [FromQuery(Name = "category")] string category = "")
     {
-        var wears = await _dbContext.PublishedWears.Where(x => x.User != null).ToListAsync();
+        var dbCategory = await _dbContext.Categories.FirstOrDefaultAsync(x => x.Name == category);
+        var wears = await (dbCategory != null
+            ? _dbContext.PublishedWears.Where(x => x.User != null && x.Category == dbCategory).ToListAsync() 
+            : _dbContext.PublishedWears.Where(x => x.User != null).ToListAsync());
+        
         Response.Headers.Add("X-Total-Count", wears.Count.ToString());
             
         var mappedData = page == -1 ?
@@ -34,7 +41,7 @@ public class PublishedWearController : Controller
         
         return Json(mappedData.Select(x => new WearModel
         {
-            ClothType = x.ClothType,
+            Category = new CategoryModel {Name = x.Category.Name},
             Name = x.Name,
             ImageUrl = x.ImageUrl, 
             CreatorId = x.User.Id,
@@ -52,7 +59,7 @@ public class PublishedWearController : Controller
         {
             return Json(new WearModel
             {
-                ClothType = wear.ClothType,
+                Category = new CategoryModel {Name = wear.Category.Name},
                 ImageUrl = wear.ImageUrl,
                 CreatorId = wear.User.Id,
                 CreatorName = wear.User.Name,
@@ -75,7 +82,7 @@ public class PublishedWearController : Controller
             var wear = new PublishedWear
             {
                 User = user,
-                ClothType = order.ClothType,
+                Category = order.Category,
                 ImageUrl = order.ImageUrl,
                 Name = model.Name,
                 EditableObject = new EditableObject
@@ -106,13 +113,15 @@ public class PublishedWearController : Controller
     }
 
     [HttpGet]
+    [Route("featured")]
+    [ProducesResponseType(typeof(IEnumerable<WearModel>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFeaturedWears()
     {
-        var featuredWears = await _dbContext.PublishedWears.Where(w => w.User.Id == 1).ToListAsync();
+        var featuredWears = await _dbContext.PublishedWears.Where(w => w.IsAdmin == true).ToListAsync();
         Response.Headers.Add("X-Total-Count", featuredWears.Count.ToString());
         return Json(featuredWears.Select(x => new WearModel
         {
-            ClothType = x.ClothType,
+            Category = new CategoryModel {Name = x.Category.Name},
             Name = x.Name,
             ImageUrl = x.ImageUrl,
             Id = x.Id

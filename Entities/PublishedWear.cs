@@ -14,5 +14,7 @@ public class PublishedWear
     public string ImageUrl { get; set; }
     [ForeignKey("EditableObjectId")]
     public virtual EditableObject EditableObject { get; set; }
-    public ClothType ClothType { get; set; }
+    [ForeignKey("CategoryId")]
+    public virtual Category Category { get; set; }
+    public bool IsAdmin { get; set; }
 }

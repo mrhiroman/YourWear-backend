@@ -7,7 +7,7 @@ public class OrderModel
     public string EditableObject { get; set; }
     public OrderStatus OrderStatus { get; set; }
     public int Cost { get; set; }
-    public ClothType ClothType { get; set; }
+    public CategoryModel Category { get; set; }
     public int CreatorId { get; set; }
     public string CreatorName { get; set; }
 }
