@@ -26,7 +26,8 @@ public class OrderController: Controller
     public async Task<IActionResult> GetOrders(
         [FromQuery(Name = "page")] int page = -1,
         [FromQuery(Name = "limit")] int limit = -1,
-        [FromQuery(Name = "category")] string category = "")
+        [FromQuery(Name = "category")] string category = "",
+        [FromQuery(Name = "status")] string status = "")
     {
         var user = await _dbContext.Users.FirstOrDefaultAsync(x => x.Name == User.Identity.Name);
         var dbCategory = await _dbContext.Categories.FirstOrDefaultAsync(x => x.Name == category);
@@ -36,7 +37,11 @@ public class OrderController: Controller
             var orders = await (dbCategory != null
                 ?_dbContext.Orders.Where(x => x.User.Id == user.Id && x.Category == dbCategory).ToListAsync() 
                 : _dbContext.Orders.Where(x => x.User.Id == user.Id).ToListAsync());
-            
+
+            if (status != "")
+                orders = orders.Where(x =>
+                    status == "draft" ? x.OrderStatus == OrderStatus.Draft : x.OrderStatus == OrderStatus.Placed).ToList();
+
             Response.Headers.Add("X-Total-Count", orders.Count.ToString());
             
             var mappedData = page == -1 ?
